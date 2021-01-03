@@ -32,17 +32,13 @@ namespace BeatTheGame.Services
 
         public async Task<GameSession> CreateGameSessionAsync(
             Player organizer,
-            bool allowRedCards,
-            int cardsInHand,
-            int cardsPerTurn,
-            int numberOfDecks,
-            int numberOfCardsInTheDeck)
+            GameSessionConfiguration configuration)
         {
             try
             {
                 await semaphoreSlim.WaitAsync();
                 var code = GenerateGameSessionCode();
-                var emptyDecks = Enumerable.Range(1, numberOfDecks)
+                var emptyDecks = Enumerable.Range(1, configuration.NumberOfDecks)
                     .Select(n => new Deck(new Stack<Card>(), n % 2 == 0 ? DeckType.Ascending : DeckType.Descending))
                     .OrderBy(d => d.Type)
                     .ToList();
@@ -51,11 +47,8 @@ namespace BeatTheGame.Services
                                                   code,
                                                   new List<Player>() { organizer },
                                                   new List<Hand>(),
-                                                  allowRedCards,
-                                                  cardsInHand,
-                                                  cardsPerTurn,
-                                                  numberOfDecks,
-                                                  deckService.GenerateDeck(allowRedCards, numberOfCardsInTheDeck),
+                                                  configuration,
+                                                  deckService.GenerateDeck(configuration),
                                                   emptyDecks,
                                                   GameSessionStatus.Created,
                                                   DateTime.Now,
@@ -77,7 +70,7 @@ namespace BeatTheGame.Services
             foreach (var player in gameSession.Players)
             {
                 var cards = new List<Card>();
-                for (var indexCard = 0; indexCard < gameSession.CardsInHand; indexCard++)
+                for (var indexCard = 0; indexCard < gameSession.Config.CardsInHand; indexCard++)
                 {
                     cards.Add(gameSession.MainDeck.Cards.Pop());
                 }
@@ -146,8 +139,8 @@ namespace BeatTheGame.Services
         {
             return (gameSession.PlayerTurn >= 0 && player?.PlayerId == gameSession.Players[gameSession.PlayerTurn].PlayerId)
                 &&
-                ((gameSession.CardsAddedThisTurn.Count >= gameSession.CardsPerTurn)
-                || gameSession.MainDeck.Cards.Count == 0 && gameSession.CardsAddedThisTurn.Count == gameSession.CardsPerTurn - 1)
+                ((gameSession.CardsAddedThisTurn.Count >= gameSession.Config.CardsPerTurn)
+                || gameSession.MainDeck.Cards.Count == 0 && gameSession.CardsAddedThisTurn.Count == gameSession.Config.CardsPerTurn - 1)
 
                 && gameSession.RedCardPendings.Count == 0;
         }
@@ -164,7 +157,7 @@ namespace BeatTheGame.Services
                 }
 
                 currentHand = gameSession.Hands[gameSession.PlayerTurn];
-                while (currentHand.Cards.Count < gameSession.CardsInHand && gameSession.MainDeck.Cards.Count > 0)
+                while (currentHand.Cards.Count < gameSession.Config.CardsInHand && gameSession.MainDeck.Cards.Count > 0)
                 {
                     currentHand.Cards.Add(gameSession.MainDeck.Cards.Pop());
                 }

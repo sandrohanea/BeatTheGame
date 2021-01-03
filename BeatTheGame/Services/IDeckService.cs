@@ -4,6 +4,6 @@ namespace BeatTheGame.Services
 {
     public interface IDeckService
     {
-        Deck GenerateDeck(bool allowRedCards, int numberOfCardsInTheDeck);
+        Deck GenerateDeck(GameSessionConfiguration gameSessionConfiguration);
     }
 }

@@ -2,37 +2,53 @@
 @inject IGameSessionService gameSessionService;
 @inject IPlayerService playerService;
 @inject NavigationManager navigationManager;
-    <div class="main-info">
-        <h1>Can you beat the game?!</h1>
+<div class="main-info">
+    <h1>Can you beat the game?!</h1>
 
-        <BFUTextField Label="Name" @bind-Value="@Name" />
-        <BFUStack ClassName="main-info" Horizontal="true" Wrap="true" Tokens=@(new BFUStackTokens() { ChildrenGap = new[] { 40.0 } })>
-            <BFUStack Tokens=@(new BFUStackTokens() { ChildrenGap = new[] { 10.0 } })>
-                <BFUTextField Label="Code" @bind-Value="@Code" />
+    <BFUTextField Label="Name" @bind-Value="@Name" />
+    <BFUStack ClassName="main-info" Horizontal="true" Wrap="true" Tokens=@(new BFUStackTokens() { ChildrenGap = new[] { 40.0 } })>
+        <BFUStack Tokens=@(new BFUStackTokens() { ChildrenGap = new[] { 10.0 } })>
+            <BFUTextField Label="Code" @bind-Value="@Code" />
 
-                <BFUPrimaryButton Text="Join Game" OnClick="JoinGameAsync" />
-            </BFUStack>
+            <BFUPrimaryButton Text="Join Game" OnClick="JoinGameAsync" />
+        </BFUStack>
 
-            <BFUStack Tokens=@(new BFUStackTokens() { ChildrenGap = new[] { 10.0 } })>
+        <BFUStack Tokens=@(new BFUStackTokens() { ChildrenGap = new[] { 10.0 } })>
 
-                <BFUTextField @bind-Value="CardsInHand " Label="Cards In Hand" />
+            <BFUChoiceGroup Label="Number of Players" ItemsSource="this.options" @bind-Value="this.SelectedOption" ItemAlignment="FlexDirection.Column" />
+            <BFUToggle Label="Show advanced settings" @bind-Checked="ShowAdvancedSettings" />
+            @if (ShowAdvancedSettings)
+            {
 
-                <BFUTextField @bind-Value="CardsInMainDeck" Label="Card in Main Deck" />
+                <BFUTextField @bind-Value="CardsInHand " Label="Cards In Hands" />
+
+                <BFUTextField @bind-Value="CardsInMainDeck" Label="Cards in Main Deck" />
 
                 <BFUCheckbox @bind-Checked="AllowRedCards" Label="Allow Red Cards" />
+
+                <BFUTextField @bind-Value="RedCardsFrequency" Label="Red Cards Frequency" />
 
                 <BFUTextField @bind-Value="CardsPerTurn" Label="Cards Per Turn" />
 
                 <BFUTextField @bind-Value="NumberOfDecks" Label="Number Of Decks" />
+            }
 
-                <BFUDefaultButton Text="Create Game" OnClick="CreateGameAsync" />
-            </BFUStack>
+            <BFUDefaultButton Text="Create Game" OnClick="CreateGameAsync" />
         </BFUStack>
-        <p>@Error</p>
-    </div>
+
+    </BFUStack>
+    <p>@Error</p>
+</div>
 
 @code
 {
+    private const string singlePlayerOption = "Single player";
+    private const string twoPlayersOption = "Two Players";
+    private const string threeToFourPlayersOption = "Three to Four Players";
+    private const string moreThanFourPlayersOption = "More than Four Players";
+    private string selectedOption = threeToFourPlayersOption;
+    private List<string> options = new List<string>() { singlePlayerOption, twoPlayersOption, threeToFourPlayersOption, moreThanFourPlayersOption };
+
     public string Name { get; set; } = string.Empty;
     public string Code { get; set; } = string.Empty;
     public string Error { get; set; } = string.Empty;
@@ -41,6 +57,25 @@
     public string CardsInMainDeck { get; set; } = "100";
     public string CardsPerTurn { get; set; } = "2";
     public string NumberOfDecks { get; set; } = "4";
+    public string RedCardsFrequency { get; set; } = "9";
+    public bool ShowAdvancedSettings { get; set; }
+
+    public string SelectedOption
+    {
+        get => selectedOption;
+        set
+        {
+            selectedOption = value;
+            CardsInHand = selectedOption switch
+            {
+                singlePlayerOption => "8",
+                twoPlayersOption => "7",
+                threeToFourPlayersOption => "6",
+                moreThanFourPlayersOption => "5",
+                _ => "6"
+            };
+        }
+    }
 
     protected override async Task OnAfterRenderAsync(bool isFirstRender)
     {
@@ -115,9 +150,14 @@
             return;
         }
 
+        if (!int.TryParse(RedCardsFrequency, out var redCardsFrequency) || redCardsFrequency <= cardsInHand)
+        {
+            Error = "Red cards frequency should be a number > cardsInHand";
+            return;
+        }
 
         var player = await playerService.GetOrUpdatePlayerAsync(Name);
-        var gameSession = await gameSessionService.CreateGameSessionAsync(player, AllowRedCards, cardsInHand, cardsPerTurn, numberOfDecks, cardsInMainDeck);
+        var gameSession = await gameSessionService.CreateGameSessionAsync(player, new GameSessionConfiguration(AllowRedCards, cardsInHand, cardsPerTurn, cardsInMainDeck, numberOfDecks, redCardsFrequency));
         navigationManager.NavigateTo($"/Game/{gameSession.Code}");
     }
-    }
+}
