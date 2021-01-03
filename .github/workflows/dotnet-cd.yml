@@ -1,0 +1,16 @@
+name: .NET
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Invoke Caprover CD
+      uses: indiesdev/curl@v1
+      with:
+        url: ${{ secrets.WebHookCD }}
