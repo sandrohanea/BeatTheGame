@@ -1,0 +1,127 @@
+﻿@inject IGameSessionService gameSessionService;
+
+@foreach (var player in GameSession!.Players)
+{
+    <BFUStack Horizontal="true">
+        <BFUPersona Text="@player.Name"
+                    Size=@PersonaSize.Size32
+                    Presence=@PersonaPresenceStatus.Online
+                    ShowInitialsUntilImageLoads="true" />
+        @if (GameSession.PlayerTurn != -1 && GameSession.Players[GameSession.PlayerTurn].PlayerId == player.PlayerId)
+        {
+            <BFUIcon IconName="ReturnKey" />
+        }
+    </BFUStack>
+}
+@if (GameSession.PlayerTurn == -1 && Player != null)
+{
+    <BFUPrimaryButton Text="I'll begin" OnClick="Start" />
+}
+
+<BFUStack Horizontal="true">
+
+    @foreach (var deck in GameSession!.Decks)
+    {
+        <div class="@("deck" + (deck.Cards.Count > 0 && deck.Cards.Peek().IsRed ? " card-in-deck-red" : string.Empty))" @onclick="() => AddCard(deck)">
+            <div class="arrow-indicator">
+                @if (deck.Type == DeckType.Ascending)
+                {
+                    <BFUIcon IconName="TriangleSolidUp12" />
+                }
+                else
+                {
+                    <BFUIcon IconName="TriangleSolidDown12" />
+                }
+            </div>
+            <div class="card-in-deck">
+                @if (deck.Cards.Count > 0)
+                {
+                    @deck.Cards.Peek().Value
+                }
+            </div>
+        </div>
+    }
+</BFUStack>
+
+@if (Hand != null)
+{
+    <BFUStack Horizontal="true">
+
+        @foreach (var card in Hand.Cards.OrderBy(c => c.Value))
+        {
+            <div class="@(card == SelectedCard ? "selected-card" : "")">
+                <div class="@("hand-card" + (card.IsRed ? " hand-card-red" : string.Empty))" @onmousedown="() => SelectCard(card)">
+                    @card.Value
+                </div>
+            </div>
+        }
+    </BFUStack>
+}
+
+@if (CanFinishTurn)
+{
+    <BFUPrimaryButton Text="I finished by turn" OnClick="FinishTurn" />
+}
+
+@code {
+    [Parameter]
+    public GameSession? GameSession { get; set; }
+
+    [Parameter]
+    public Player? Player { get; set; }
+
+    public Hand? Hand { get; set; }
+
+    public Card? SelectedCard { get; set; }
+
+    public bool CanFinishTurn { get; private set; }
+
+    protected override void OnParametersSet()
+    {
+        var hand = GameSession!.Hands.FirstOrDefault(h => h.PlayerId == Player?.PlayerId);
+        if (hand != Hand)
+        {
+            Hand = hand;
+            StateHasChanged();
+        }
+        var canFinishTurn = gameSessionService.CanFinishTurn(GameSession!, Player);
+        if (canFinishTurn != CanFinishTurn)
+        {
+            CanFinishTurn = canFinishTurn;
+            StateHasChanged();
+        }
+    }
+
+    private void Start()
+    {
+        gameSessionService.StartWithMyTurn(Player!, GameSession!);
+    }
+
+    private void SelectCard(Card card)
+    {
+        SelectedCard = card;
+    }
+
+    private void AddCard(Deck deck)
+    {
+        if (SelectedCard == null || Hand == null || GameSession.PlayerTurn == -1 || GameSession!.Players[GameSession.PlayerTurn].PlayerId != Player?.PlayerId)
+        {
+            return;
+        }
+
+        if (!gameSessionService.AddCard(deck, SelectedCard, GameSession!, Hand))
+        {
+            // Show some message;
+        }
+        else
+        {
+            SelectedCard = null;
+        }
+    }
+
+    private void FinishTurn()
+    {
+        gameSessionService.FinishTurn(GameSession!);
+    }
+
+}

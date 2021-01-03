@@ -1,0 +1,128 @@
+﻿@page "/game/{Code}"
+@inject IGameSessionService gameSessionService;
+@inject INotificationService notificationService;
+@inject IPlayerService playerService;
+<h1>The Game</h1>
+
+@if (GameSession == null)
+{
+    <p>Cannot find any game with this code: @Code</p>
+    return;
+}
+
+@if (GameSession.GameSessionStatus == GameSessionStatus.Created)
+{
+    <p>Waiting for players</p>
+    <BFUStack Horizontal="true">
+        <BFUTextField @bind-Value="PlayerName" />
+        <BFUPrimaryButton @onclick="AddPlayerAsync" Text="Join" />
+    </BFUStack>
+    <p>Players:</p>
+    @foreach (var player in GameSession.Players)
+    {
+        <BFUStack Horizontal="true">
+            <BFUPersona Text="@player.Name"
+                        Size=@PersonaSize.Size32
+                        Presence=@PersonaPresenceStatus.Online
+                        ShowInitialsUntilImageLoads="true" />
+            @if (IsOrganizer && player.PlayerId != MyPlayer!.PlayerId)
+            {
+                <BFUIconButton OnClick=@(() => RemovePerson(player)) IconName="Cancel" AriaLabel="Emoji" />
+            }
+        </BFUStack>
+    }
+
+    @if (IsOrganizer)
+    {
+        <BFUPrimaryButton @onclick="StartGame" Text="Start" />
+    }
+}
+
+@if (GameSession.GameSessionStatus == GameSessionStatus.Lost)
+{
+    <h1>You all lost</h1>
+}
+
+@if (GameSession.GameSessionStatus == GameSessionStatus.Started)
+{
+    <OngoingGame GameSession="GameSession" Player="MyPlayer" />
+}
+
+@if (GameSession.GameSessionStatus == GameSessionStatus.Won)
+{
+    <h1>Congrats, you won!</h1>
+}
+
+@code {
+
+    [Parameter]
+    public string? Code { get; set; }
+
+    public GameSession? GameSession { get; set; }
+
+    public Player? MyPlayer { get; set; }
+
+    public string PlayerName { get; set; } = string.Empty;
+
+    public bool IsOrganizer => MyPlayer?.PlayerId == GameSession?.OrganizerId;
+
+    protected override void OnParametersSet()
+    {
+        if (Code != null)
+        {
+            GameSession = gameSessionService.GetGameSession(Code);
+            notificationService.Subscribe(Code, UpdateGameSession);
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+        var player = await playerService.GetMyPlayerAsync();
+        if (player != null)
+        {
+            MyPlayer = player;
+            if (GameSession != null && !GameSession.Players.Any(p => p.PlayerId == player.PlayerId))
+            {
+                gameSessionService.JoinGameSession(player, GameSession);
+            }
+        }
+        if (IsOrganizer)
+        {
+            StateHasChanged();
+        }
+    }
+
+    private async Task AddPlayerAsync()
+    {
+        if (string.IsNullOrEmpty(PlayerName))
+        {
+            return;
+        }
+
+        MyPlayer = await playerService.GetOrUpdatePlayerAsync(PlayerName);
+        if (GameSession != null)
+        {
+            gameSessionService.JoinGameSession(MyPlayer, GameSession);
+        }
+    }
+
+    private void RemovePerson(Player player)
+    {
+        gameSessionService.RemoveFromGameSession(player, GameSession!);
+    }
+
+    private void StartGame()
+    {
+        gameSessionService.StartGameSession(GameSession!);
+    }
+
+    private void UpdateGameSession(GameSession gameSession)
+    {
+        GameSession = gameSession;
+        InvokeAsync(StateHasChanged);
+    }
+}
