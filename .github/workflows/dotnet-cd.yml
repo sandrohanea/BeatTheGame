@@ -14,3 +14,4 @@ jobs:
       uses: indiesdev/curl@v1
       with:
         url: ${{ secrets.WebHookCD }}
+        method: POST
