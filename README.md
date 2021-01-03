@@ -6,7 +6,6 @@ Any help is appreciated.
 
 # Ongoing work
 - We need to improve the UI/UX(mobile friendly inclusive)
-- We need to let the game know when a game session is won or lost
 - We need to add interactive informations about the rules when the game is played for the first time.
 
 

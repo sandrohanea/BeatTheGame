@@ -104,7 +104,7 @@
 
     private void AddCard(Deck deck)
     {
-        if (SelectedCard == null || Hand == null || GameSession.PlayerTurn == -1 || GameSession!.Players[GameSession.PlayerTurn].PlayerId != Player?.PlayerId)
+        if (GameSession == null || SelectedCard == null || Hand == null || GameSession.PlayerTurn == -1 || GameSession.Players[GameSession.PlayerTurn].PlayerId != Player?.PlayerId)
         {
             return;
         }

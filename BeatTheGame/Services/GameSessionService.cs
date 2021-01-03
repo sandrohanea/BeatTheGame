@@ -35,13 +35,18 @@ namespace BeatTheGame.Services
             bool allowRedCards,
             int cardsInHand,
             int cardsPerTurn,
-            int numberOfDecks)
+            int numberOfDecks,
+            int numberOfCardsInTheDeck)
         {
             try
             {
                 await semaphoreSlim.WaitAsync();
                 var code = GenerateGameSessionCode();
-                var emptyDecks = Enumerable.Range(1, numberOfDecks).Select(n => new Deck(new Stack<Card>(), n % 2 == 0 ? DeckType.Ascending : DeckType.Descending)).ToList();
+                var emptyDecks = Enumerable.Range(1, numberOfDecks)
+                    .Select(n => new Deck(new Stack<Card>(), n % 2 == 0 ? DeckType.Ascending : DeckType.Descending))
+                    .OrderBy(d => d.Type)
+                    .ToList();
+
                 var gameSession = new GameSession(organizer.PlayerId,
                                                   code,
                                                   new List<Player>() { organizer },
@@ -50,7 +55,7 @@ namespace BeatTheGame.Services
                                                   cardsInHand,
                                                   cardsPerTurn,
                                                   numberOfDecks,
-                                                  deckService.GenerateDeck(allowRedCards),
+                                                  deckService.GenerateDeck(allowRedCards, numberOfCardsInTheDeck),
                                                   emptyDecks,
                                                   GameSessionStatus.Created,
                                                   DateTime.Now,
@@ -115,12 +120,11 @@ namespace BeatTheGame.Services
         {
             if (deck.Cards.Count > 0)
             {
-                var oldCard = deck.Cards.Peek();
-                if ((oldCard.Value > card.Value && deck.Type == DeckType.Ascending && oldCard.Value != card.Value + 10)
-                    || oldCard.Value < card.Value && deck.Type == DeckType.Descending && oldCard.Value != card.Value - 10)
+                if (!CanTheCardBeAddedOnTheDeck(gameSession, card, deck))
                 {
                     return false;
                 }
+                var oldCard = deck.Cards.Peek();
                 if (gameSession.RedCardPendings.Any(r => r == oldCard.Value))
                 {
                     gameSession.RedCardPendings.Remove(oldCard.Value);
@@ -129,6 +133,11 @@ namespace BeatTheGame.Services
             hand.Cards.Remove(card);
             deck.Cards.Push(card);
             gameSession.CardsAddedThisTurn.Add(card.Value);
+
+            if (CheckIfGameIsLostOrWon(gameSession))
+            {
+                return true;
+            }
             notificationService.Notify(gameSession);
             return true;
         }
@@ -145,30 +154,112 @@ namespace BeatTheGame.Services
 
         public void FinishTurn(GameSession gameSession)
         {
-            var nextPlayerIndex = gameSession.PlayerTurn + 1;
-            if (nextPlayerIndex == gameSession.Players.Count)
+            Hand currentHand;
+            do
             {
-                nextPlayerIndex = 0;
-            }
+                var nextPlayerIndex = gameSession.PlayerTurn + 1;
+                if (nextPlayerIndex == gameSession.Players.Count)
+                {
+                    nextPlayerIndex = 0;
+                }
 
-            var currentHand = gameSession.Hands[gameSession.PlayerTurn];
-            while (currentHand.Cards.Count < gameSession.CardsInHand && gameSession.MainDeck.Cards.Count > 0)
-            {
-                currentHand.Cards.Add(gameSession.MainDeck.Cards.Pop());
-            }
+                currentHand = gameSession.Hands[gameSession.PlayerTurn];
+                while (currentHand.Cards.Count < gameSession.CardsInHand && gameSession.MainDeck.Cards.Count > 0)
+                {
+                    currentHand.Cards.Add(gameSession.MainDeck.Cards.Pop());
+                }
 
-            gameSession = gameSession with { 
-                PlayerTurn = nextPlayerIndex,
-                RedCardPendings = gameSession.Decks
-                                        .Where(d => d.Cards.Count > 0)
-                                        .Select(d => d.Cards.Peek())
-                                        .Where(c => c.IsRed)
-                                        .Select(c => c.Value)
-                                        .ToList(),
-                CardsAddedThisTurn = new List<int>() };
+                gameSession = gameSession with
+                {
+                    PlayerTurn = nextPlayerIndex,
+                    RedCardPendings = gameSession.Decks
+                                            .Where(d => d.Cards.Count > 0)
+                                            .Select(d => d.Cards.Peek())
+                                            .Where(c => c.IsRed)
+                                            .Select(c => c.Value)
+                                            .ToList(),
+                    CardsAddedThisTurn = new List<int>()
+                };
+
+                if (CheckIfGameIsLostOrWon(gameSession))
+                {
+                    return;
+                }
+
+                currentHand = gameSession.Hands[gameSession.PlayerTurn];
+                // We need to repeat the process in case the current player finished all the cards.
+            } while (currentHand.Cards.Count == 0);
 
             activeSessions[gameSession.Code] = gameSession;
             notificationService.Notify(gameSession);
+        }
+
+        private bool CheckIfGameIsLostOrWon(GameSession gameSession)
+        {
+            var isGameOver = false;
+            //The game is won if there are no more cards in the deck or hands.
+            if (gameSession.MainDeck.Cards.Count == 0 && gameSession.Hands.All(h => h.Cards.Count == 0))
+            {
+                gameSession = gameSession with { GameSessionStatus = GameSessionStatus.Won };
+                isGameOver = true;
+            }
+            else
+            {
+                // If the player can finish turn, the show must go on.
+                if (CanFinishTurn(gameSession, gameSession.Players[gameSession.PlayerTurn]))
+                {
+                    return false;
+                }
+
+                // The game is lost if the current player have no more cards to add
+                var currentHand = gameSession.Hands[gameSession.PlayerTurn];
+                var isAnyMove = false;
+                foreach (var card in currentHand.Cards)
+                {
+                    foreach (var deck in gameSession.Decks)
+                    {
+                        if (CanTheCardBeAddedOnTheDeck(gameSession, card, deck))
+                        {
+                            isAnyMove = true;
+                            break;
+                        }
+                    }
+
+                    if (isAnyMove)
+                    {
+                        break;
+                    }
+                }
+                if (!isAnyMove)
+                {
+                    gameSession = gameSession with { GameSessionStatus = GameSessionStatus.Lost };
+                    isGameOver = true;
+                }
+            }
+
+            if (isGameOver)
+            {
+                activeSessions[gameSession.Code] = gameSession;
+                notificationService.Notify(gameSession);
+            }
+
+            return isGameOver;
+        }
+
+        private bool CanTheCardBeAddedOnTheDeck(GameSession gameSession, Card card, Deck deck)
+        {
+            if (deck.Cards.Count == 0)
+            {
+                return true;
+            }
+
+            var oldCard = deck.Cards.Peek();
+            if ((oldCard.Value > card.Value && deck.Type == DeckType.Ascending && oldCard.Value != card.Value + 10)
+                || oldCard.Value < card.Value && deck.Type == DeckType.Descending && oldCard.Value != card.Value - 10)
+            {
+                return false;
+            }
+            return true;
         }
 
         private string GenerateGameSessionCode()
