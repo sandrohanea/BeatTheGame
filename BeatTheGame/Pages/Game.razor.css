@@ -1,0 +1,10 @@
+﻿.main-deck {
+    position: absolute;
+    right: 0px;
+    bottom: 0px;
+    background-color: cornflowerblue;
+    display: flex;
+    align-items: center;
+    color: white;
+    padding: 10px;
+}

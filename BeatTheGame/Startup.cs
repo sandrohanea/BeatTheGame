@@ -5,6 +5,8 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Quartz;
+using System;
 
 namespace BeatTheGame
 {
@@ -28,6 +30,34 @@ namespace BeatTheGame
             services.AddTransient<IDeckService, DeckService>();
             services.AddTransient<INotificationService, NotificationService>();
             services.AddTransient<IGameSessionService, GameSessionService>();
+            services.AddTransient<CleanOldGamesJob>();
+
+            services.AddQuartz(q =>
+            {
+                q.SchedulerId = "Scheduler-Core";
+                q.UseMicrosoftDependencyInjectionJobFactory(options =>
+                {
+                    options.AllowDefaultConstructor = true;
+                });
+                q.UseSimpleTypeLoader();
+                q.UseInMemoryStore();
+                q.UseDefaultThreadPool(tp =>
+                {
+                    tp.MaxConcurrency = 10;
+                });
+                q.ScheduleJob<CleanOldGamesJob>(trigger => trigger
+                 .WithIdentity("Clean Games Job")
+                 .StartAt(DateBuilder.TodayAt(23, 59, 59))
+                 .WithDailyTimeIntervalSchedule(x => x.WithInterval(24, IntervalUnit.Hour))
+                 .WithDescription("The Trigger for daily game sessions cleaning.")
+                );
+            });
+
+            services.AddQuartzServer(options =>
+            {
+                // when shutting down we want jobs to complete gracefully
+                options.WaitForJobsToComplete = true;
+            });
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

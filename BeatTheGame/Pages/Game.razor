@@ -53,6 +53,11 @@
     <h1>Congrats, you won!</h1>
 }
 
+<div class="main-deck" style="top:@((100-(GameSession!.MainDeck.Cards.Count * 100 / GameSession!.Config.NumberOfCardsInDeck)).ToString() + "%")">
+    <p>Cards left: @GameSession!.MainDeck.Cards.Count</p>
+</div>
+
+
 @code {
 
     [Parameter]
@@ -81,6 +86,7 @@
         {
             return;
         }
+
         var player = await playerService.GetMyPlayerAsync();
         if (player != null)
         {
@@ -90,6 +96,7 @@
                 gameSessionService.JoinGameSession(player, GameSession);
             }
         }
+
         if (IsOrganizer)
         {
             StateHasChanged();

@@ -11,6 +11,7 @@ namespace BeatTheGame.Services
         void FinishTurn(GameSession gameSession);
         GameSession? GetGameSession(string code);
         void JoinGameSession(Player player, GameSession gameSession);
+        void CleanOldSessions();
         void RemoveFromGameSession(Player player, GameSession gameSession);
         void StartGameSession(GameSession gameSession);
         void StartWithMyTurn(Player player, GameSession gameSession);

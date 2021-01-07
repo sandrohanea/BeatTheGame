@@ -269,5 +269,17 @@ namespace BeatTheGame.Services
             } while (activeSessions.ContainsKey(code));
             return code;
         }
+
+        public void CleanOldSessions()
+        {
+            foreach (var (code, gameSession) in activeSessions)
+            {
+                if (gameSession?.CreatedDateTime.AddDays(1) < DateTime.Now)
+                {
+                    activeSessions.Remove(code);
+                    notificationService.Clear(code);
+                }
+            }
+        }
     }
 }

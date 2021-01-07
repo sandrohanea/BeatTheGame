@@ -15,7 +15,7 @@
 }
 @if (GameSession.PlayerTurn == -1 && Player != null)
 {
-    <BFUPrimaryButton Text="I'll begin" OnClick="Start" />
+    <BFUPrimaryButton Text="I'll begin" OnClick="Start" ClassName="button-begin" />
 }
 
 <BFUStack Horizontal="true">
@@ -60,7 +60,7 @@
 
 @if (CanFinishTurn)
 {
-    <BFUPrimaryButton Text="I finished by turn" OnClick="FinishTurn" />
+    <BFUPrimaryButton Text="I finished my turn" OnClick="FinishTurn" />
 }
 
 @code {
