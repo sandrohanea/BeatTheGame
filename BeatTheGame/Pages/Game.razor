@@ -60,6 +60,8 @@
 
 @code {
 
+    private Action<GameSession>? updateAction;
+
     [Parameter]
     public string? Code { get; set; }
 
@@ -75,8 +77,9 @@
     {
         if (Code != null)
         {
+            updateAction = (GameSession gs) => UpdateGameSession(gs);
             GameSession = gameSessionService.GetGameSession(Code);
-            notificationService.Subscribe(Code, UpdateGameSession);
+            notificationService.Subscribe(Code, updateAction);
         }
     }
 
@@ -97,10 +100,7 @@
             }
         }
 
-        if (IsOrganizer)
-        {
-            StateHasChanged();
-        }
+        StateHasChanged();
     }
 
     private async Task AddPlayerAsync()

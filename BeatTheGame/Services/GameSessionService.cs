@@ -272,7 +272,7 @@ namespace BeatTheGame.Services
 
         public void CleanOldSessions()
         {
-            foreach (var (code, gameSession) in activeSessions)
+            foreach (var (code, gameSession) in activeSessions.ToList())
             {
                 if (gameSession?.CreatedDateTime.AddDays(1) < DateTime.Now)
                 {

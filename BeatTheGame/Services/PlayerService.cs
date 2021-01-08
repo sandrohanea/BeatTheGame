@@ -46,12 +46,21 @@ namespace BeatTheGame.Services
 
         public async Task<Player?> GetMyPlayerAsync()
         {
-            var storagePlayerId = await protectedLocalStorage.GetAsync<Guid>(playerSessionKey);
-            if (!storagePlayerId.Success)
+            try
             {
+                var storagePlayerId = await protectedLocalStorage.GetAsync<Guid>(playerSessionKey);
+                if (!storagePlayerId.Success)
+                {
+                    return null;
+                }
+                return GetPlayer(storagePlayerId.Value);
+            }
+            catch
+            {
+                // Player Id cannot be retrieved from the local storage because the app was redeployed
+                // and the key was changed
                 return null;
             }
-            return GetPlayer(storagePlayerId.Value);
         }
     }
 }
