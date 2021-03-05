@@ -4,3 +4,17 @@
     left: 50%;
     transform: translate(-50%, 0%);
 }
+
+.game-description {
+    text-align: center;
+    max-width: 500px;
+}
+
+.learn-how-to-play {
+    margin-top: 20px;
+}
+
+.error-message {
+    color: red;
+    font-weight: bold;
+}

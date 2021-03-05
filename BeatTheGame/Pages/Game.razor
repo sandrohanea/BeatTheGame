@@ -41,6 +41,7 @@
 @if (GameSession.GameSessionStatus == GameSessionStatus.Lost)
 {
     <h1>You all lost</h1>
+    <iframe src="https://giphy.com/embed/10h8CdMQUWoZ8Y" width="480" height="270" frameBorder="0" class="giphy-embed" allowFullScreen></iframe>
 }
 
 @if (GameSession.GameSessionStatus == GameSessionStatus.Started)
@@ -51,6 +52,7 @@
 @if (GameSession.GameSessionStatus == GameSessionStatus.Won)
 {
     <h1>Congrats, you won!</h1>
+    <iframe src="https://giphy.com/embed/cOtvwSHKaFK3Ul1VVu" width="480" height="270" frameBorder="0" class="giphy-embed" allowFullScreen></iframe>
 }
 
 <div class="main-deck" style="top:@((100-(GameSession!.MainDeck.Cards.Count * 100 / GameSession!.Config.NumberOfCardsInDeck)).ToString() + "%")">

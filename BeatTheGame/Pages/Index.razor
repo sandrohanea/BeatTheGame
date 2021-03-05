@@ -4,10 +4,19 @@
 @inject NavigationManager navigationManager;
 <div class="main-info">
     <h1>Can you beat the game?!</h1>
-
+    <div class="game-description">
+        <p>A simple game solitaire-like where you're playing against the game even on your own or with your team. (But it's better with the team)</p>
+    </div>
+    <div class="error-message">
+        <p>@Error</p>
+    </div>
     <BFUTextField Label="Name" @bind-Value="@Name" />
     <BFUStack ClassName="main-info" Horizontal="true" Wrap="true" Tokens=@(new BFUStackTokens() { ChildrenGap = new[] { 40.0 } })>
         <BFUStack Tokens=@(new BFUStackTokens() { ChildrenGap = new[] { 10.0 } })>
+            <div class="learn-how-to-play">
+                <BFUDefaultButton OnClick="LearnHowToPlayAsync" Text="Learn how to play" />
+            </div>
+
             <BFUTextField Label="Code" @bind-Value="@Code" />
 
             <BFUPrimaryButton Text="Join Game" OnClick="JoinGameAsync" />
@@ -37,7 +46,6 @@
         </BFUStack>
 
     </BFUStack>
-    <p>@Error</p>
 </div>
 
 @code
@@ -96,9 +104,9 @@
 
     private async Task JoinGameAsync()
     {
-        if (string.IsNullOrEmpty(Name))
+        var player = await GetPlayerAsync();
+        if (player == null)
         {
-            Error = "The name cannot be empty";
             return;
         }
 
@@ -108,7 +116,6 @@
             return;
         }
 
-        var player = await playerService.GetOrUpdatePlayerAsync(Name);
         var gameSession = gameSessionService.GetGameSession(Code);
         if (gameSession == null)
         {
@@ -120,13 +127,25 @@
 
     }
 
-    private async Task CreateGameAsync()
+    private async Task LearnHowToPlayAsync()
     {
-        if (string.IsNullOrEmpty(Name))
+        var player = await GetPlayerAsync();
+        if (player == null)
         {
-            Error = "The name cannot be empty";
             return;
         }
+
+        navigationManager.NavigateTo("/Learn");
+    }
+
+    private async Task CreateGameAsync()
+    {
+        var player = await GetPlayerAsync();
+        if (player == null)
+        {
+            return;
+        }
+
         if (!int.TryParse(CardsInHand, out var cardsInHand) || cardsInHand <= 0)
         {
             Error = "Cards in hand should be a number > 0";
@@ -156,8 +175,18 @@
             return;
         }
 
-        var player = await playerService.GetOrUpdatePlayerAsync(Name);
         var gameSession = await gameSessionService.CreateGameSessionAsync(player, new GameSessionConfiguration(AllowRedCards, cardsInHand, cardsPerTurn, cardsInMainDeck, numberOfDecks, redCardsFrequency));
         navigationManager.NavigateTo($"/Game/{gameSession.Code}");
+    }
+
+    private async Task<Player?> GetPlayerAsync()
+    {
+        if (string.IsNullOrEmpty(Name))
+        {
+            Error = "The name cannot be empty";
+            return null;
+        }
+
+        return await playerService.GetOrUpdatePlayerAsync(Name);
     }
 }

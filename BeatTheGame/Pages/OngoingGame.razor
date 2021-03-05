@@ -1,19 +1,21 @@
 ﻿@inject IGameSessionService gameSessionService;
 
-@foreach (var player in GameSession!.Players)
-{
-    <BFUStack Horizontal="true">
-        <BFUPersona Text="@player.Name"
-                    Size=@PersonaSize.Size32
-                    Presence=@PersonaPresenceStatus.Online
-                    ShowInitialsUntilImageLoads="true" />
-        @if (GameSession.PlayerTurn != -1 && GameSession.Players[GameSession.PlayerTurn].PlayerId == player.PlayerId)
-        {
-            <BFUIcon IconName="ReturnKey" />
-        }
-    </BFUStack>
-}
-@if (GameSession.PlayerTurn == -1 && Player != null)
+<BFUStack Tokens=@(new BFUStackTokens() { ChildrenGap = new[] { 5.0 } })>
+    @foreach (var player in GameSession!.Players)
+    {
+        <BFUStack Horizontal="true">
+            <BFUPersona Text="@player.Name"
+                        Size=@PersonaSize.Size32
+                        Presence=@PersonaPresenceStatus.Online
+                        ShowInitialsUntilImageLoads="true" />
+            @if (GameSession.PlayerTurn != -1 && GameSession.Players[GameSession.PlayerTurn].PlayerId == player.PlayerId)
+            {
+                <BFUIcon IconName="ReturnKey" />
+            }
+        </BFUStack>
+    }
+</BFUStack>
+@if (GameSession?.PlayerTurn == -1 && Player != null)
 {
     <BFUPrimaryButton Text="I'll begin" OnClick="Start" ClassName="button-begin" />
 }

@@ -1,0 +1,64 @@
+﻿.message {
+    margin: 30px auto 20px;
+    position: absolute;
+    left: 50%;
+    transform: translate(-50%, 0%);
+    text-align: center;
+}
+
+.main-deck {
+    position: absolute;
+    right: 0px;
+    bottom: 0px;
+    background-color: cornflowerblue;
+    display: flex;
+    align-items: center;
+    color: white;
+    padding: 10px;
+}
+.hand-card {
+    min-width: 100px;
+    border: solid;
+    border-radius: 5pt;
+    padding: 20pt;
+    margin: 10pt;
+    font-size: x-large;
+    font-family: cursive;
+}
+
+.hand-card-red {
+    background: red;
+    color: white;
+}
+
+.deck {
+    min-width: 100px;
+    border: solid;
+    border-radius: 5pt;
+    padding: 10pt;
+    margin: 20pt;
+}
+
+.arrow-indicator {
+}
+
+.card-in-deck-red {
+    background: red;
+    color: white;
+}
+
+.card-in-deck {
+    padding-top: 20pt;
+    font-size: x-large;
+    font-family: cursive;
+}
+
+.selected-card {
+    border-color: blue;
+    border-radius: 5pt;
+    border: dashed;
+}
+
+.button-begin {
+    margin-top: 10px;
+}

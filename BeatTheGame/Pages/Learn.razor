@@ -1,0 +1,244 @@
+﻿@page "/Learn"
+@inject IPlayerService playerService;
+@inject NavigationManager navigationManager;
+<h3>Learning mode</h3>
+<BFUStack Tokens=@(new BFUStackTokens() { ChildrenGap = new[] { 5.0 } })>
+    @foreach (var player in players)
+    {
+        <BFUStack Horizontal="true">
+            <BFUPersona Text="@player.Name"
+                        Size=@PersonaSize.Size32
+                        Presence=@PersonaPresenceStatus.Online
+                        ShowInitialsUntilImageLoads="true" />
+
+            @if (currentProgress == LearnProgress.TurnIndicator && player.Name == "Your friend")
+            {
+                <BFUIcon IconName="ReturnKey" />
+            }
+
+        </BFUStack>
+    }
+</BFUStack>
+@if (currentProgress == LearnProgress.IllStart)
+{
+    <BFUPrimaryButton Text="I'll begin" OnClick="Next" ClassName="button-begin" />
+}
+
+@if (currentProgress > LearnProgress.Initial)
+{
+    <div class="main-deck" style="top:@((100-(numberOfCardsInDeck)).ToString() + "%")">
+        <p>Cards left: @numberOfCardsInDeck</p>
+    </div>
+}
+
+@if (currentProgress > LearnProgress.FinishTheDeck)
+{
+
+    <BFUStack Horizontal="true">
+
+        @foreach (var deck in decks)
+        {
+            <div class="@("deck" + (deck.Cards.Count > 0 && deck.Cards.Peek().IsRed ? " card-in-deck-red" : string.Empty))" @onclick="() => AddCard(deck)">
+                <div class="arrow-indicator">
+                    @if (deck.Type == DeckType.Ascending)
+                    {
+                        <BFUIcon IconName="TriangleSolidUp12" />
+                    }
+                    else
+                    {
+                        <BFUIcon IconName="TriangleSolidDown12" />
+                    }
+                </div>
+                <div class="card-in-deck">
+                    @if (deck.Cards.Count > 0)
+                    {
+                        @deck.Cards.Peek().Value
+                    }
+                </div>
+            </div>
+        }
+    </BFUStack>
+
+}
+
+@if (currentProgress > LearnProgress.DiscardingDecksOrder)
+{
+    <BFUStack Horizontal="true">
+
+        @foreach (var card in hand.Cards.OrderBy(c => c.Value))
+        {
+            <div class="@(card == selectedCard ? "selected-card" : "")">
+                <div class="@("hand-card" + (card.IsRed ? " hand-card-red" : string.Empty))" @onmousedown="() => SelectCard(card)">
+                    @card.Value
+                </div>
+            </div>
+        }
+    </BFUStack>
+
+}
+
+<div class="message">
+    <h2>@message</h2>
+    @if (!noNextButtonSteps.Contains(currentProgress))
+    {
+        <BFUPrimaryButton OnClick="Next" Text="Next" />
+    }
+    @if (currentProgress == LearnProgress.Finish)
+    {
+
+        <BFUPrimaryButton OnClick="Back" Text="Back" />
+    }
+</div>
+
+@code {
+
+    private List<Player> players = new List<Player>();
+    private LearnProgress currentProgress = LearnProgress.Initial;
+    private string message = string.Empty;
+    private int numberOfCardsInDeck = 100;
+    private int playerTurn = -1;
+    private bool myTurn = false;
+    private Card? selectedCard;
+    private Hand hand = new Hand(Guid.NewGuid(), new List<Card>() { new Card(10, false), new Card(3, false), new Card(8, false), new Card(7, false), new Card(77, false) });
+
+    private List<Deck> decks = new List<Deck>()
+{
+        new Deck(new Stack<Card>(new List<Card>() {new Card(1, false)}), DeckType.Ascending),
+        new Deck(new Stack<Card>(new List<Card>() {new Card(88, false)}), DeckType.Ascending),
+        new Deck(new Stack<Card>(new List<Card>() {new Card(56, false)}), DeckType.Descending),
+        new Deck(new Stack<Card>(new List<Card>() {new Card(33, false)}), DeckType.Descending),
+    };
+
+    private Dictionary<LearnProgress, string> messageMap = new Dictionary<LearnProgress, string>()
+    {
+        [LearnProgress.Initial] = "On the left you can see the players in the room",
+        [LearnProgress.PresentDeck] = "On the right, you can see the deck. In the deck we have 100 distinct cards from 0 to 99.",
+        [LearnProgress.FinishTheDeck] = "If you want to beat the game, you and your team must finish the cards in the deck and hands.",
+        [LearnProgress.DiscardingDecks] = "These are the discarding decks.",
+        [LearnProgress.DiscardingDecksOrder] = "Some of them are ascending, and some descending.",
+        [LearnProgress.YourHand] = "These are the cards in your hand. Under any circumstances, you MUST NOT disclose them to your team. You can click on them to select one.",
+        [LearnProgress.SimpleRuleAscending] = "You can discard a card on an asceding deck if the last card discarded on that deck is lower than your card",
+        [LearnProgress.SimpleRuleDescending] = "You can also discard a card on a desceding deck if the last card discarded on that deck is higher than your card",
+        [LearnProgress.TenDiffRule] = "If a deck went too high or too low, you can save your team and add a card in the oposite direction if the difference is exactly 10.",
+        [LearnProgress.RedCardRule] = "If a red card is discarded, either you or the player after you should cover it(discard something on top of it). If she/he can't then you'll lose.",
+        [LearnProgress.Minimum2Cards] = "Every player will discard minimum 2 cards at each turn, if you can't discard 2 cards, you'll lose.",
+        [LearnProgress.Only1CardDeckFinished] = "When the deck is finished, you can discard only 1 card at each turn until you'll finish the cards in your hands.",
+        [LearnProgress.IllStart] = "At the beggining of the game, everyone will look at their cards and choose who will start.",
+        [LearnProgress.TurnIndicator] = "Near a player can be a turn indicator which indicated that it is that player's turn",
+        [LearnProgress.CanTalk] = "You can and should talk to your team but without discosing your cards.",
+        [LearnProgress.AcceptedPhrases] = "Accepted phrases are: <I'll go way up on the first deck>, <Please, don't touch the second deck 'cause I have SOMETHING for it.>, <etc>",
+        [LearnProgress.Finish] = "You finished the learning mode, go ahead and beat the game",
+
+    };
+
+    private HashSet<LearnProgress> noNextButtonSteps = new HashSet<LearnProgress>() { LearnProgress.YourHand, LearnProgress.SimpleRuleAscending, LearnProgress.SimpleRuleDescending, LearnProgress.TenDiffRule, LearnProgress.IllStart, LearnProgress.Finish };
+
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        var player = await playerService.GetMyPlayerAsync();
+        if (player == null)
+        {
+            player = await playerService.GetOrUpdatePlayerAsync("You");
+        }
+        message = messageMap[LearnProgress.Initial];
+        players = new List<Player>()
+{
+            player,
+            new Player(Guid.NewGuid(), "Your friend"),
+            new Player(Guid.NewGuid(), "Your colleague"),
+            new Player(Guid.NewGuid(), "Your brother"),
+
+        };
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void AddCard(Deck deck)
+    {
+        if (selectedCard == null)
+        {
+            return;
+        }
+
+        var cardValue = deck.Cards.Peek().Value;
+
+        if (cardValue > selectedCard.Value && currentProgress == LearnProgress.SimpleRuleDescending && deck.Type == DeckType.Descending)
+        {
+            hand.Cards.Remove(selectedCard);
+            deck.Cards.Push(selectedCard);
+            hand.Cards.Add(new Card(decks[2].Cards.Peek().Value + 10, false));
+            Next();
+            numberOfCardsInDeck--;
+        }
+
+        if (cardValue < selectedCard.Value && currentProgress == LearnProgress.SimpleRuleAscending && deck.Type == DeckType.Ascending)
+        {
+            hand.Cards.Remove(selectedCard);
+            deck.Cards.Push(selectedCard);
+            Next();
+            numberOfCardsInDeck--;
+        }
+
+        if (cardValue == selectedCard.Value - 10 && deck.Type == DeckType.Descending && currentProgress == LearnProgress.TenDiffRule)
+        {
+            hand.Cards.Remove(selectedCard);
+            deck.Cards.Push(selectedCard);
+            hand.Cards.Add(new Card(27, true));
+            Next();
+            numberOfCardsInDeck--;
+        }
+
+    }
+
+    private void SelectCard(Card card)
+    {
+        selectedCard = card;
+        if (currentProgress == LearnProgress.YourHand)
+        {
+            Next();
+        }
+    }
+
+    private void Next()
+    {
+        currentProgress++;
+        message = messageMap[currentProgress];
+
+        if (currentProgress == LearnProgress.Only1CardDeckFinished)
+        {
+            numberOfCardsInDeck = 0;
+        }
+    }
+
+    private void Back()
+    {
+        navigationManager.NavigateTo("/");
+    }
+
+    private enum LearnProgress
+    {
+        Initial,
+        PresentDeck,
+        FinishTheDeck,
+        DiscardingDecks,
+        DiscardingDecksOrder,
+        YourHand,
+        SimpleRuleAscending,
+        SimpleRuleDescending,
+        TenDiffRule,
+        RedCardRule,
+        Minimum2Cards,
+        Only1CardDeckFinished,
+        IllStart,
+        TurnIndicator,
+        CanTalk,
+        AcceptedPhrases,
+        Finish
+    }
+}
