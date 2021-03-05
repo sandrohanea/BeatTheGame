@@ -8,7 +8,7 @@ namespace BeatTheGame.Services
 {
     public class PlayerService : IPlayerService
     {
-        private static readonly Dictionary<Guid, Player> players = new Dictionary<Guid, Player>();
+        private static readonly Dictionary<Guid, Player> players = new();
         private readonly ProtectedLocalStorage protectedLocalStorage;
         private const string playerSessionKey = "playerId";
 

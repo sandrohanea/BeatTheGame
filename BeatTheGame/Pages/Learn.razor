@@ -96,8 +96,6 @@
     private LearnProgress currentProgress = LearnProgress.Initial;
     private string message = string.Empty;
     private int numberOfCardsInDeck = 100;
-    private int playerTurn = -1;
-    private bool myTurn = false;
     private Card? selectedCard;
     private Hand hand = new Hand(Guid.NewGuid(), new List<Card>() { new Card(10, false), new Card(3, false), new Card(8, false), new Card(7, false), new Card(77, false) });
 
